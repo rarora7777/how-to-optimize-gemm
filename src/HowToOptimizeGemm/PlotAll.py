@@ -12,16 +12,17 @@ nprocessors = 1
 # Indicate the clock speed of the processor.  On a Linux machine this info
 # can be found in the file /proc/cpuinfo
 #
-# Note: some processors have a "turbo boost" mode, which increases
-# the peak clock rate...
+# Numbers for Apple M3 performance and efficiency cores
 #
-GHz_of_processor = 2.0
+
+GHz_of_processor = 4.05
+# GHz_of_processor = 2.75;
 
 
 class Parser:
     def __init__(self, file_name) -> None:
         self.attrs = {}
-        with open(file_name) as file:
+        with open(file_name, encoding="utf-8") as file:
             self.toks = file.read().split()
             self.toksi = 0
             file.close()
@@ -71,25 +72,22 @@ class Parser:
 old = Parser("output_old.m")
 new = Parser("output_new.m")
 
-#print(old)
-#print(new)
+old_data: np.ndarray = np.array(old.MY_MMult).reshape(-1, 3)
+new_data: np.ndarray = np.array(new.MY_MMult).reshape(-1, 3)
 
-old_data = np.array(old.MY_MMult).reshape(-1, 3)
-new_data = np.array(new.MY_MMult).reshape(-1, 3)
-
-max_gflops = nflops_per_cycle * nprocessors * GHz_of_processor;
+max_gflops = nflops_per_cycle * nprocessors * GHz_of_processor
 
 fig, ax = plt.subplots()
 ax.plot(old_data[:,0], old_data[:,1], 'bo-.', label='old:' + old.version)
 ax.plot(new_data[:,0], new_data[:,1], 'r-*', label='new:' + new.version)
 
 ax.set(xlabel='m = n = k', ylabel='GFLOPS/sec.',
-       title="OLD = {}, NEW = {}".format(old.version, new.version))
+       title=f"OLD = {old.version}, NEW = {new.version}")
 ax.grid()
 ax.legend()
 
-ax.set_xlim([old_data[0,0], old_data[-1,0]])
-ax.set_ylim([0, max_gflops])
+ax.set_xlim((old_data[0,0], old_data[-1,0]))
+ax.set_ylim((0.0, max_gflops))
 
-# fig.savefig("test.png")
+fig.savefig(f"../../figures/compare_{old.version}_{new.version}.png")
 plt.show()

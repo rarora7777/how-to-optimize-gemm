@@ -1,12 +1,12 @@
 OLD  := MMult0
-NEW  := MMult0
+NEW  := MMult1
 #
 # sample makefile
 #
 
-CC         := gcc
+CC         := clang
 LINKER     := $(CC)
-CFLAGS     := -O2 -Wall -msse3
+CFLAGS     := -O2 -Wall -march=armv8-a+fp+simd
 LDFLAGS    := -lm
 
 UTIL       := copy_matrix.o \

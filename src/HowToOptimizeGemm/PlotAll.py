@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pathlib
 
 # Indicate the number of floating point operations that can be executed
 # per clock cycle
@@ -69,8 +70,9 @@ class Parser:
     def __getattr__(self, name):
         return self.attrs[name]
 
-old = Parser("output_old.m")
-new = Parser("output_new.m")
+folder = pathlib.Path(__file__).parent.resolve()
+old = Parser(folder.joinpath("output_old.m"))
+new = Parser(folder.joinpath("output_new.m"))
 
 old_data: np.ndarray = np.array(old.MY_MMult).reshape(-1, 3)
 new_data: np.ndarray = np.array(new.MY_MMult).reshape(-1, 3)
@@ -89,5 +91,5 @@ ax.legend()
 ax.set_xlim((old_data[0,0], old_data[-1,0]))
 ax.set_ylim((0.0, max_gflops))
 
-fig.savefig(f"../../figures/compare_{old.version}_{new.version}.png")
+fig.savefig(folder.parent.parent.resolve().joinpath(f"figures/compare_{old.version}_{new.version}.png"))
 plt.show()

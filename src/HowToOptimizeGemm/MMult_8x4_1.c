@@ -43,9 +43,9 @@ void InnerKernel(int m, int n, int k, double *a, int lda,
 {
   int i, j;
   double
-      packedA[m * k];
+      packedA[m * k] __attribute__((aligned(64)));
   static double
-      packedB[kc * nb]; /* Note: using a static buffer is not thread safe... */
+      packedB[kc * nb] __attribute__((aligned(64))); /* Note: using a static buffer is not thread safe... */
 
   for (j = 0; j < n; j += 4)
   { /* Loop over the columns of C, unrolled by 4 */
@@ -139,7 +139,7 @@ void AddDot8x4(int k, double *a, int lda, double *b, int ldb, double *c, int ldc
   c_62_c_72.v = vdupq_n_f64(0.0); c_63_c_73.v = vdupq_n_f64(0.0);
 
   // The K loop
-  for (p = 0; p < k; p++)
+  for (p = 0; p < k; p+=2)
   {
     // Load 8 contiguous elements from packed A
     a_0p_a_1p.v = vld1q_f64(a);
@@ -174,8 +174,42 @@ void AddDot8x4(int k, double *a, int lda, double *b, int ldb, double *c, int ldc
     c_43_c_53.v = vfmaq_f64(c_43_c_53.v, a_4p_a_5p.v, b_p3.v);
     c_63_c_73.v = vfmaq_f64(c_63_c_73.v, a_6p_a_7p.v, b_p3.v);
 
-    a += 8; // Advance packed A by 8 
-    b += 4; // Advance packed B by 4
+    // Load 8 contiguous elements from packed A
+    a_0p_a_1p.v = vld1q_f64(a + 8);
+    a_2p_a_3p.v = vld1q_f64(a + 10);
+    a_4p_a_5p.v = vld1q_f64(a + 12);
+    a_6p_a_7p.v = vld1q_f64(a + 14);
+
+    // Load and duplicate 4 elements from packed B
+    b_p0.v = vld1q_dup_f64(b + 4);
+    b_p1.v = vld1q_dup_f64(b + 5);
+    b_p2.v = vld1q_dup_f64(b + 6);
+    b_p3.v = vld1q_dup_f64(b + 7);
+
+    // 32 FMAs to compute the outer product
+    c_00_c_10.v = vfmaq_f64(c_00_c_10.v, a_0p_a_1p.v, b_p0.v);
+    c_20_c_30.v = vfmaq_f64(c_20_c_30.v, a_2p_a_3p.v, b_p0.v);
+    c_40_c_50.v = vfmaq_f64(c_40_c_50.v, a_4p_a_5p.v, b_p0.v);
+    c_60_c_70.v = vfmaq_f64(c_60_c_70.v, a_6p_a_7p.v, b_p0.v);
+
+    c_01_c_11.v = vfmaq_f64(c_01_c_11.v, a_0p_a_1p.v, b_p1.v);
+    c_21_c_31.v = vfmaq_f64(c_21_c_31.v, a_2p_a_3p.v, b_p1.v);
+    c_41_c_51.v = vfmaq_f64(c_41_c_51.v, a_4p_a_5p.v, b_p1.v);
+    c_61_c_71.v = vfmaq_f64(c_61_c_71.v, a_6p_a_7p.v, b_p1.v);
+
+    c_02_c_12.v = vfmaq_f64(c_02_c_12.v, a_0p_a_1p.v, b_p2.v);
+    c_22_c_32.v = vfmaq_f64(c_22_c_32.v, a_2p_a_3p.v, b_p2.v);
+    c_42_c_52.v = vfmaq_f64(c_42_c_52.v, a_4p_a_5p.v, b_p2.v);
+    c_62_c_72.v = vfmaq_f64(c_62_c_72.v, a_6p_a_7p.v, b_p2.v);
+
+    c_03_c_13.v = vfmaq_f64(c_03_c_13.v, a_0p_a_1p.v, b_p3.v);
+    c_23_c_33.v = vfmaq_f64(c_23_c_33.v, a_2p_a_3p.v, b_p3.v);
+    c_43_c_53.v = vfmaq_f64(c_43_c_53.v, a_4p_a_5p.v, b_p3.v);
+    c_63_c_73.v = vfmaq_f64(c_63_c_73.v, a_6p_a_7p.v, b_p3.v);
+
+
+    a += 16; // Advance packed A by 16 (2 * 8)
+    b += 8; // Advance packed B by 8 (2 * 4)
   }
 
   // Write back to C (Rows 0-3)

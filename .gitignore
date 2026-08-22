@@ -1,3 +1,5 @@
 *.o
 **/test_MMult.x
 .vscode/*
+src/HowToOptimizeGemm/output_old.m
+src/HowToOptimizeGemm/output_new.m

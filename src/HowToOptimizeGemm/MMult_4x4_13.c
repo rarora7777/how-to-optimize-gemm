@@ -14,12 +14,14 @@
 /* Routine for computing C = A * B + C */
 
 void AddDot4x4( int, double *, int, double *, int, double *, int );
+void PackMatrixA( int, double *, int, double * );
+void InnerKernel(int, int, int, double *, int, double *, int, double *, int);
 
 void MY_MMult( int m, int n, int k, double *a, int lda, 
                                     double *b, int ldb,
                                     double *c, int ldc )
 {
-  int i, j, p, pb, ib;
+  int i, p, pb, ib;
 
   /* This time, we compute a mc x n block of C by a call to the InnerKernel */
 
@@ -37,21 +39,35 @@ void InnerKernel( int m, int n, int k, double *a, int lda,
                                        double *c, int ldc )
 {
   int i, j;
+  double 
+    packedA[ m * k ];
 
   for ( j=0; j<n; j+=4 ){        /* Loop over the columns of C, unrolled by 4 */
     for ( i=0; i<m; i+=4 ){        /* Loop over the rows of C */
       /* Update C( i,j ), C( i,j+1 ), C( i,j+2 ), and C( i,j+3 ) in
 	 one routine (four inner products) */
-
-      AddDot4x4( k, &A( i,0 ), lda, &B( 0,j ), ldb, &C( i,j ), ldc );
+      if ( j == 0 ) PackMatrixA( k, &A( i, 0 ), lda, &packedA[ i*k ] );
+      AddDot4x4( k, &packedA[ i*k ], 4, &B( 0,j ), ldb, &C( i,j ), ldc );
     }
   }
 }
 
-#include <mmintrin.h>
-#include <xmmintrin.h>  // SSE
-#include <pmmintrin.h>  // SSE2
-#include <emmintrin.h>  // SSE3
+void PackMatrixA( int k, double *a, int lda, double *a_to )
+{
+  int j;
+
+  for( j=0; j<k; j++){  /* loop over columns of A */
+    double 
+      *a_ij_pntr = &A( 0, j );
+
+    *a_to++ = *a_ij_pntr;
+    *a_to++ = *(a_ij_pntr+1);
+    *a_to++ = *(a_ij_pntr+2);
+    *a_to++ = *(a_ij_pntr+3);
+  }
+}
+
+#include "sse2neon.h" // SSE2NEON
 
 typedef union
 {
@@ -107,8 +123,9 @@ void AddDot4x4( int k, double *a, int lda,  double *b, int ldb, double *c, int l
   c_23_c_33_vreg.v = _mm_setzero_pd(); 
 
   for ( p=0; p<k; p++ ){
-    a_0p_a_1p_vreg.v = _mm_load_pd( (double *) &A( 0, p ) );
-    a_2p_a_3p_vreg.v = _mm_load_pd( (double *) &A( 2, p ) );
+    a_0p_a_1p_vreg.v = _mm_load_pd( (double *) a );
+    a_2p_a_3p_vreg.v = _mm_load_pd( (double *) ( a+2 ) );
+    a += 4;
 
     b_p0_vreg.v = _mm_loaddup_pd( (double *) b_p0_pntr++ );   /* load and duplicate */
     b_p1_vreg.v = _mm_loaddup_pd( (double *) b_p1_pntr++ );   /* load and duplicate */

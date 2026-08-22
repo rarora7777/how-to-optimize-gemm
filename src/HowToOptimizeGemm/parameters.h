@@ -2,9 +2,9 @@
 In the test driver, there is a loop "for ( p=PFIRST; p<= PLAST; p+= PINC )"
 The below parameters set this range of values that p takes on 
 */   
-#define PFIRST 40
-#define PLAST  800
-#define PINC   40
+#define PFIRST 80
+#define PLAST  1600
+#define PINC   80
 
 /* 
 In the test driver, the m, n, and k dimensions are set to the below 
@@ -35,6 +35,6 @@ leading dimension of the array that stores matrix X.  If LDX=-1
 then the leading dimension is set to the row dimension of matrix X.
 */
 
-#define LDA 1000
-#define LDB 1000
-#define LDC 1000
+#define LDA 2000
+#define LDB 2000
+#define LDC 2000

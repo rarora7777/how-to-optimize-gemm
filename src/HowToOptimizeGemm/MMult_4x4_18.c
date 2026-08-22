@@ -5,8 +5,8 @@
 #define C(i, j) c[(j) * ldc + (i)]
 
 /* Block sizes */
-#define mc 256
-#define kc 128
+#define mc 512
+#define kc 512
 #define nb 1600
 
 #define min(i, j) ((i) < (j) ? (i) : (j))
@@ -57,6 +57,10 @@ void InnerKernel(int m, int n, int k, double *a, int lda,
    one routine (four inner products) */
       if (j == 0)
         PackMatrixA(k, &A(i, 0), lda, &packedA[i * k]);
+      // Prefetch the start of the NEXT block of A before calling the microkernel
+      // if (i + 4 < m) {
+      //     __builtin_prefetch(&packedA[(i + 4) * k], 0, 0);
+      // }
       AddDot4x4(k, &packedA[i * k], 4, &packedB[j * k], k, &C(i, j), ldc);
     }
   }
@@ -157,82 +161,62 @@ void AddDot4x4(int k, double *a, int lda, double *b, int ldb, double *c, int ldc
   c1_22_c_32.v = vdupq_n_f64(0.0);
   c1_23_c_33.v = vdupq_n_f64(0.0);
 
+  // __builtin_prefetch(&C(0, 0), 1, 0);
+  // __builtin_prefetch(&C(1, 0), 1, 0);
+  // __builtin_prefetch(&C(2, 0), 1, 0);
+  // __builtin_prefetch(&C(3, 0), 1, 0);
+  // __builtin_prefetch(&C(0, 1), 1, 0);
+  // __builtin_prefetch(&C(1, 1), 1, 0);
+  // __builtin_prefetch(&C(2, 1), 1, 0);
+  // __builtin_prefetch(&C(3, 1), 1, 0);
+  // __builtin_prefetch(&C(0, 2), 1, 0);
+  // __builtin_prefetch(&C(1, 2), 1, 0);
+  // __builtin_prefetch(&C(2, 2), 1, 0);
+  // __builtin_prefetch(&C(3, 2), 1, 0);
+  // __builtin_prefetch(&C(0, 3), 1, 0);
+  // __builtin_prefetch(&C(1, 3), 1, 0);
+  // __builtin_prefetch(&C(2, 3), 1, 0);
+  // __builtin_prefetch(&C(3, 3), 1, 0);
+
   for (p = 0; p < k; p+=2)
   {
+    // __builtin_prefetch(a + 64, 0, 1); // Prefetch next 2 packed columns of A
+    // __builtin_prefetch(b + 64, 0, 1); // Prefetch next 2 packed rows of B
     a_0p_a_1p_vreg.v = vld1q_f64(a);
-    a_2p_a_3p_vreg.v = vld1q_f64(a + 2);
-    
     b_p0_vreg.v = vld1q_dup_f64(b);       /* load and duplicate */
-    b_p1_vreg.v = vld1q_dup_f64(b + 1); /* load and duplicate */
-    b_p2_vreg.v = vld1q_dup_f64(b + 2); /* load and duplicate */
-    b_p3_vreg.v = vld1q_dup_f64(b + 3); /* load and duplicate */
-    
-    /* First row and second rows */
     c0_00_c_10.v = vfmaq_f64(c0_00_c_10.v, a_0p_a_1p_vreg.v, b_p0_vreg.v);
-    c0_01_c_11.v = vfmaq_f64(c0_01_c_11.v, a_0p_a_1p_vreg.v, b_p1_vreg.v);
-    c0_02_c_12.v = vfmaq_f64(c0_02_c_12.v, a_0p_a_1p_vreg.v, b_p2_vreg.v);
-    c0_03_c_13.v = vfmaq_f64(c0_03_c_13.v, a_0p_a_1p_vreg.v, b_p3_vreg.v);
-    
-    /* Third and fourth rows */
+    a_2p_a_3p_vreg.v = vld1q_f64(a + 2);
     c0_20_c_30.v = vfmaq_f64(c0_20_c_30.v, a_2p_a_3p_vreg.v, b_p0_vreg.v);
+    b_p1_vreg.v = vld1q_dup_f64(b + 1); /* load and duplicate */
+    c0_01_c_11.v = vfmaq_f64(c0_01_c_11.v, a_0p_a_1p_vreg.v, b_p1_vreg.v);
     c0_21_c_31.v = vfmaq_f64(c0_21_c_31.v, a_2p_a_3p_vreg.v, b_p1_vreg.v);
+    b_p2_vreg.v = vld1q_dup_f64(b + 2); /* load and duplicate */
+    c0_02_c_12.v = vfmaq_f64(c0_02_c_12.v, a_0p_a_1p_vreg.v, b_p2_vreg.v);
     c0_22_c_32.v = vfmaq_f64(c0_22_c_32.v, a_2p_a_3p_vreg.v, b_p2_vreg.v);
+    b_p3_vreg.v = vld1q_dup_f64(b + 3); /* load and duplicate */
+    c0_03_c_13.v = vfmaq_f64(c0_03_c_13.v, a_0p_a_1p_vreg.v, b_p3_vreg.v);
     c0_23_c_33.v = vfmaq_f64(c0_23_c_33.v, a_2p_a_3p_vreg.v, b_p3_vreg.v);
+    
 
     /* --- Iteration 2 (p+1) --- */
-    // Load the NEXT column of A and row of B
-    a_0p_a_1p_vreg.v = vld1q_f64(a + 4);
-    a_2p_a_3p_vreg.v = vld1q_f64(a + 6);
-
-    b_p0_vreg.v = vld1q_dup_f64(b + 4);
-    b_p1_vreg.v = vld1q_dup_f64(b + 5);
-    b_p2_vreg.v = vld1q_dup_f64(b + 6);
-    b_p3_vreg.v = vld1q_dup_f64(b + 7);
-
+    
     // Compute the next 8 FMAs
     // By the time the CPU scheduler gets here, the 4-cycle latency 
     // from Iteration 1 is finished, and these run without stalling!
+    a_0p_a_1p_vreg.v = vld1q_f64(a + 4);
+    b_p0_vreg.v = vld1q_dup_f64(b + 4);
     c1_00_c_10.v = vfmaq_f64(c1_00_c_10.v, a_0p_a_1p_vreg.v, b_p0_vreg.v);
-    c1_01_c_11.v = vfmaq_f64(c1_01_c_11.v, a_0p_a_1p_vreg.v, b_p1_vreg.v);
-    c1_02_c_12.v = vfmaq_f64(c1_02_c_12.v, a_0p_a_1p_vreg.v, b_p2_vreg.v);
-    c1_03_c_13.v = vfmaq_f64(c1_03_c_13.v, a_0p_a_1p_vreg.v, b_p3_vreg.v);
+    a_2p_a_3p_vreg.v = vld1q_f64(a + 6);
     c1_20_c_30.v = vfmaq_f64(c1_20_c_30.v, a_2p_a_3p_vreg.v, b_p0_vreg.v);
+    b_p1_vreg.v = vld1q_dup_f64(b + 5);
+    c1_01_c_11.v = vfmaq_f64(c1_01_c_11.v, a_0p_a_1p_vreg.v, b_p1_vreg.v);
     c1_21_c_31.v = vfmaq_f64(c1_21_c_31.v, a_2p_a_3p_vreg.v, b_p1_vreg.v);
+    b_p2_vreg.v = vld1q_dup_f64(b + 6);
+    c1_02_c_12.v = vfmaq_f64(c1_02_c_12.v, a_0p_a_1p_vreg.v, b_p2_vreg.v);
     c1_22_c_32.v = vfmaq_f64(c1_22_c_32.v, a_2p_a_3p_vreg.v, b_p2_vreg.v);
+    b_p3_vreg.v = vld1q_dup_f64(b + 7);
+    c1_03_c_13.v = vfmaq_f64(c1_03_c_13.v, a_0p_a_1p_vreg.v, b_p3_vreg.v);
     c1_23_c_33.v = vfmaq_f64(c1_23_c_33.v, a_2p_a_3p_vreg.v, b_p3_vreg.v);
-
-    // a_0p_a_1p_vreg.v = vld1q_f64(a + 8);
-    // a_2p_a_3p_vreg.v = vld1q_f64(a + 10);
-    // b_p0_vreg.v = vld1q_dup_f64(b + 8);
-    // b_p1_vreg.v = vld1q_dup_f64(b + 9);
-    // b_p2_vreg.v = vld1q_dup_f64(b + 10);
-    // b_p3_vreg.v = vld1q_dup_f64(b + 11);
-
-    // c0_00_c_10.v = vfmaq_f64(c0_00_c_10.v, a_0p_a_1p_vreg.v, b_p0_vreg.v);
-    // c0_01_c_11.v = vfmaq_f64(c0_01_c_11.v, a_0p_a_1p_vreg.v, b_p1_vreg.v);
-    // c0_02_c_12.v = vfmaq_f64(c0_02_c_12.v, a_0p_a_1p_vreg.v, b_p2_vreg.v);
-    // c0_03_c_13.v = vfmaq_f64(c0_03_c_13.v, a_0p_a_1p_vreg.v, b_p3_vreg.v);
-    // c0_20_c_30.v = vfmaq_f64(c0_20_c_30.v, a_2p_a_3p_vreg.v, b_p0_vreg.v);
-    // c0_21_c_31.v = vfmaq_f64(c0_21_c_31.v, a_2p_a_3p_vreg.v, b_p1_vreg.v);
-    // c0_22_c_32.v = vfmaq_f64(c0_22_c_32.v, a_2p_a_3p_vreg.v, b_p2_vreg.v);
-    // c0_23_c_33.v = vfmaq_f64(c0_23_c_33.v, a_2p_a_3p_vreg.v, b_p3_vreg.v);
-
-    // a_0p_a_1p_vreg.v = vld1q_f64(a + 12);
-    // a_2p_a_3p_vreg.v = vld1q_f64(a + 14);
-    // b_p0_vreg.v = vld1q_dup_f64(b + 12);
-    // b_p1_vreg.v = vld1q_dup_f64(b + 13);
-    // b_p2_vreg.v = vld1q_dup_f64(b + 14);
-    // b_p3_vreg.v = vld1q_dup_f64(b + 15);
-
-    // c1_00_c_10.v = vfmaq_f64(c1_00_c_10.v, a_0p_a_1p_vreg.v, b_p0_vreg.v);
-    // c1_01_c_11.v = vfmaq_f64(c1_01_c_11.v, a_0p_a_1p_vreg.v, b_p1_vreg.v);
-    // c1_02_c_12.v = vfmaq_f64(c1_02_c_12.v, a_0p_a_1p_vreg.v, b_p2_vreg.v);
-    // c1_03_c_13.v = vfmaq_f64(c1_03_c_13.v, a_0p_a_1p_vreg.v, b_p3_vreg.v);
-    // c1_20_c_30.v = vfmaq_f64(c1_20_c_30.v, a_2p_a_3p_vreg.v, b_p0_vreg.v);
-    // c1_21_c_31.v = vfmaq_f64(c1_21_c_31.v, a_2p_a_3p_vreg.v, b_p1_vreg.v);
-    // c1_22_c_32.v = vfmaq_f64(c1_22_c_32.v, a_2p_a_3p_vreg.v, b_p2_vreg.v);
-    // c1_23_c_33.v = vfmaq_f64(c1_23_c_33.v, a_2p_a_3p_vreg.v, b_p3_vreg.v);
-
 
     a += 8; // Advance A by 2 packed columns (2 * 4)
     b += 8; // Advance B by 2 packed rows (2 * 4)

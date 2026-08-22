@@ -1,5 +1,5 @@
-OLD  := MMult_4x4_8
-NEW  := MMult_4x4_9
+OLD  := MMult_4x4_9
+NEW  := MMult_4x4_10
 #
 # sample makefile
 #
@@ -8,6 +8,8 @@ CC         := clang
 LINKER     := $(CC)
 CFLAGS     := -O2 -Wall -march=armv8-a+fp+simd
 LDFLAGS    := -lm
+INCLUDE    := ../../sse2neon
+CPPFLAGS   := -I$(INCLUDE)
 
 UTIL       := copy_matrix.o \
               compare_matrices.o \
@@ -19,9 +21,7 @@ UTIL       := copy_matrix.o \
 TEST_OBJS  := test_MMult.o $(NEW).o 
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 all: 
 	make clean;
@@ -29,7 +29,7 @@ all:
 
 test_MMult.x: $(TEST_OBJS) $(UTIL) parameters.h
 	$(LINKER) $(TEST_OBJS) $(UTIL) $(LDFLAGS) \
-        $(BLAS_LIB) -o $(TEST_BIN) $@ 
+	        $(BLAS_LIB) -o $(TEST_BIN) $@ 
 
 run:	
 	make all

@@ -37,4 +37,8 @@ Copyright by Prof. Robert van de Geijn (rvdg@cs.utexas.edu).
 | `MMult_4x4_18.c` | Tunes block sizes and reschedules loads and FMAs. |
 | `MMult_8x4_1.c` | Expands the microkernel to 8×4 and aligns packed buffers to 64 bytes. |
 
+# Comparisons
+### Against naive implementation
 ![MMult0 versus MMult 8×4](figures/compare_MMult0_MMult_8x4_1.png)
+### Against OpenBLAS (single-threaded)
+![MMult 8×4 versus Open BLAS](figures/compare_MMult_8x4_1_MMult_OpenBLAS.png)

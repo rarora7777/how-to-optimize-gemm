@@ -50,11 +50,11 @@ int main()
     // cold = ( double * ) malloc( ldc * n * sizeof( double ) );
     // cref = ( double * ) malloc( ldc * n * sizeof( double ) );
 
-    posix_memalign(&a, 64, lda * (k+1) * sizeof(double));
-    posix_memalign(&b, 64, ldb * n * sizeof(double));
-    posix_memalign(&c, 64, ldc * n * sizeof(double));
-    posix_memalign(&cold, 64, ldc * n * sizeof(double));
-    posix_memalign(&cref, 64, ldc * n * sizeof(double));
+    posix_memalign((void **)&a, 64, lda * (k+1) * sizeof(double));
+    posix_memalign((void **)&b, 64, ldb * n * sizeof(double));
+    posix_memalign((void **)&c, 64, ldc * n * sizeof(double));
+    posix_memalign((void **)&cold, 64, ldc * n * sizeof(double));
+    posix_memalign((void **)&cref, 64, ldc * n * sizeof(double));
 
     /* Generate random matrices A, B, Cold */
     random_matrix( m, k, a, lda );

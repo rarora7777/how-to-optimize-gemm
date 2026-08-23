@@ -1,5 +1,5 @@
-OLD  := MMult0
-NEW  := MMult_8x4_1
+OLD  := MMult_8x4_1
+NEW  := MMult_OpenBLAS
 #
 # sample makefile
 #
@@ -7,9 +7,9 @@ NEW  := MMult_8x4_1
 CC         := clang
 LINKER     := $(CC)
 CFLAGS     := -O2 -Wall -march=armv8-a+fp+simd
-LDFLAGS    := -lm
+LDFLAGS    := -lm -L/opt/homebrew/opt/openblas/lib -lopenblas
 INCLUDE    := ../../sse2neon
-CPPFLAGS   := -I$(INCLUDE)
+CPPFLAGS   := -I$(INCLUDE) -I/opt/homebrew/opt/openblas/include
 
 UTIL       := copy_matrix.o \
               compare_matrices.o \
@@ -35,6 +35,7 @@ run:
 	make all
 	export OMP_NUM_THREADS=1
 	export GOTO_NUM_THREADS=1
+	export OPENBLAS_NUM_THREADS=1
 	echo "version = '$(NEW)';" > output_$(NEW).m
 	./test_MMult.x >> output_$(NEW).m
 	cp output_$(OLD).m output_old.m

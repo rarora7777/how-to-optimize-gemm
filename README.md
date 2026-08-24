@@ -1,8 +1,13 @@
-# Forked from How To Optimize Gemm
+General Matrix Multiplication (GEMM) is a fundamental operation optimized by [BLAS libraries](https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms#Level_3). It evaluates the expression
+**C** := α **AB** + β **C**, where **A**, **B**, and **C** and matrices with floating-point elements. This repository optimizes a simplified version **C** := **AB** on Apple Silicon, with specific parameters optimized for the M3 processor.
 
+
+# Forked from How To Optimize Gemm
 https://github.com/flame/how-to-optimize-gemm
+
 Wiki: https://github.com/flame/how-to-optimize-gemm/wiki
-Copyright by Prof. Robert van de Geijn (rvdg@cs.utexas.edu).
+
+© Prof. Robert van de Geijn (rvdg@cs.utexas.edu)
 
 
 # Table of contents
